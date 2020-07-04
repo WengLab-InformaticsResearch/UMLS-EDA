@@ -40,7 +40,7 @@ def gen_eda(train_orig, output_file, alpha, num_aug=9):
         if re.search("^##|^\s+$",line):
             writer.write(line)
             continue
-        parts = line.split('|')
+        parts = line.rstrip().split('|')
         label = parts[1]
         sentence = parts[2]
         aug_sentences = eda(sentence, alpha_sr=alpha, alpha_ri=alpha, alpha_rs=alpha, p_rd=alpha,alpha_umls=alpha, num_aug=num_aug)
@@ -77,7 +77,6 @@ def gen_eda_for_re(train_orig, output_file, alpha, num_aug=9):
         if i%10 ==0:
             cost = time.time()-cur_time
             minute=cost//60
-            print ("......10 instance cost:",minute,"min, or",cost,"sec.\n")
             cur_time = time.time()
     writer.close()
     print("generated augmented sentences with eda for " + train_orig + " to " + output_file + " with num_aug=" + str(num_aug))

@@ -127,11 +127,9 @@ def umls_replacement(words,n,task = "sent"):
         if i['term'] in atoms:
             atoms.remove(i['term'])
         
-        #print(len(atoms),i['term'],"-------- atoms:",atoms,"\n")
         if len(atoms)>0:
             atoms_set.append({i['term']:atoms})
             total_num=total_num*len(atoms)
-    #print(total_num)
     max_num = min(n, total_num)
     for _ in range(max_num):
         new_sent = sent
@@ -143,8 +141,6 @@ def umls_replacement(words,n,task = "sent"):
             new_sent = re.sub("[ |^]"+term+"[ |$]"," "+synonym+" ",new_sent)
             #atoms.remove(synonym)
             #atoms_set[i] = {term:atoms}
-            #print (term,"==",synonym)
-        #print("\n")
         augumented_sents.append(new_sent)
     return list(set(augumented_sents))
 
@@ -172,7 +168,6 @@ def synonym_replacement(words, n,task = "sentence"):
         if len(synonyms) >= 1:
             synonym = random.choice(list(synonyms))
             new_words = [synonym if word == random_word else word for word in new_words]
-            #print("replaced", random_word, "with", synonym)
             num_replaced += 1
         if num_replaced >= n: #only replace up to n words
             break
@@ -307,7 +302,6 @@ def eda(sentence, alpha_sr=0.2, alpha_ri=0.2, alpha_rs=0.2, p_rd=0.2,alpha_umls=
         sentences = umls_replacement(words,n_umls,task)
         if len(sentences) > 0:
             augmented_sentences.extend(sentences)
-        print ("...finish umls")
     except:
         augmented_sentences=[]
   
