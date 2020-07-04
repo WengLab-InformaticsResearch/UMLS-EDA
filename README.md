@@ -26,7 +26,7 @@
      
 ### 2. Sentence Classification 
 
- * **Input**: "|" seperated file (`*index*|*label*|*sentence text*`)  
+ * **Input**: "|" seperated file (`index|label|sentence text`)  
  * **Usage**: 
  ```
      python augment4class.py [-h] --input INPUT [--output OUTPUT] [--num_aug NUM_AUG] [--alpha ALPHA]
