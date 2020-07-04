@@ -2,7 +2,7 @@
 **:tada: A light-weighted UMLS-based data augmentation for biomedical NLP tasks including Named Entity Recognition and sentence classification :tada:**  
 **Built upon [EDA-Easy Data Augmentation]https://arxiv.org/abs/1901.11196  
 
-* Author: Tian Kang (tk2624@cumc.columbia.edu)  
+* Author: [Tian Kang](tiankangnlp.com) (tk2624@cumc.columbia.edu)  
 * Affiliation: Department of Biomedical Informatics, Columbia Univerisity ([Dr. Chunhua Weng](http://people.dbmi.columbia.edu/~chw7007/)'s lab)   
 * Citation: 
 * Evaluation: 
