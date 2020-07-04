@@ -10,13 +10,13 @@
 
 ## User Guide  
   
-### 0. Before start**   
+### 0. Before start  
   1) Install ['UMLS'](https://www.nlm.nih.gov/research/umls/licensedcontent/umlsknowledgesources.html) and ['QuickUMLS'](https://github.com/Georgetown-IR-Lab/QuickUMLS) locally 
   2) Get your _UMLS SOAP API Key_ from the UTS ‘My Profile’ area after signing in UMLS Terminology service[https://uts.nlm.nih.gov/home.html]  
   3) Add your API Key and QuickUMLS directory to the `config.py`.   
   4) Costomzie other variables in the `config.py`   
   
-### 1. Named Entity Recognition**  
+### 1. Named Entity Recognition  
 
  * **Input***: CoNLL format file  
  * **Usage***: 	 
@@ -24,7 +24,7 @@
      python augment4ner.py [-h] --input INPUT [--output OUTPUT] [--num_aug NUM_AUG] [--alpha ALPHA]
  ```
      
-### 2. Sentence Classification**  
+### 2. Sentence Classification 
 
  * **Input**: "|" seperated file (`*index*|*label*|*sentence text*`)  
  * **Usage**: 
