@@ -65,7 +65,7 @@ def get_only_chars(line):
 
 
 from QuickUMLS.quickumls import QuickUMLS
-matcher = QuickUMLS(config.QuickUMLS_dir,threshold=config.threshold,similarity_name ='cosine')#,overlapping_criteria='length')
+matcher = QuickUMLS(config.QuickUMLS_dir, threshold=config.threshold, similarity_name ='cosine')#,overlapping_criteria='length')
 
 def get_umls_tagging(text,matcher):
     info = matcher.match(text, best_match=True, ignore_syntax=False)
