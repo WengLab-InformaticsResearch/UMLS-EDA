@@ -1,11 +1,10 @@
 # UMLS-EDA :octocat: 
 **:tada: A light-weighted UMLS-based data augmentation for biomedical NLP tasks including Named Entity Recognition and sentence classification :tada:**  
-**Built upon [EDA-Easy Data Augmentation]https://arxiv.org/abs/1901.11196  
 
+* Citation: Tian Kang, Adler Perotte, Youlan Tang, Casey Ta, Chunhua Weng, **[UMLS-based data augmentation for natural language processing of clinical research literature]**(https://academic.oup.com/jamia/advance-article/doi/10.1093/jamia/ocaa309/6046153), Journal of the American Medical Informatics Association, 2020;, ocaa309
 * Author: [Tian Kang](http://www.tiankangnlp.com)  (tk2624@cumc.columbia.edu)  
 * Affiliation: Department of Biomedical Informatics, Columbia Univerisity ([Dr. Chunhua Weng](http://people.dbmi.columbia.edu/~chw7007/)'s lab)   
-* Citation: 
-* Evaluation: 
+* Built upon [EDA-Easy Data Augmentation](https://arxiv.org/abs/1901.11196) 
 
 
 ## User Guide  
