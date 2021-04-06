@@ -1,7 +1,7 @@
 # Easy data augmentation techniques for text classification
 # Jason Wei and Kai Zou
 
-from src.eda import *
+from src.eda4ner import *
 
 #arguments to be parsed from command line
 import argparse,codecs
@@ -11,6 +11,9 @@ ap.add_argument("--output", required=False, type=str, help="output file of unaug
 ap.add_argument("--num_aug", required=False, type=int, help="number of augmented sentences per original sentence")
 ap.add_argument("--alpha", required=False, type=float, help="percent of words in each sentence to be changed")
 args = ap.parse_args()
+from config import Config
+config = Config()
+apikey = config.apikey
 
 #the output file
 output = None
@@ -65,9 +68,9 @@ def gen_eda(train_orig, output_file, alpha, num_aug=9):
         sent = [a.split("\t")[0] for a in info]
         label = [a.split("\t")[1] for a in info]
         sentence = " ".join(sent)
-      
         #sentence = line.rstrip()
-        aug_sentences = eda(sentence,label,alpha_sr=alpha, alpha_ri=alpha, alpha_rs=alpha, p_rd=alpha, num_aug=num_aug)
+        aug_sentences = eda(sentence,label,apikey=apikey, alpha_sr=alpha, alpha_ri=alpha, alpha_rs=alpha, p_rd=alpha,alpha_umls=alpha, num_aug=num_aug)
+        #aug_sentences = eda(sentence,label,alpha_sr=alpha, alpha_ri=alpha, alpha_rs=alpha, p_rd=alpha, num_aug=num_aug, task ="re")
         for aug_sentence in aug_sentences:
         
             words = aug_sentence[0]

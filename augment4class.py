@@ -11,7 +11,9 @@ ap.add_argument("--output", required=False, type=str, help="output file of unaug
 ap.add_argument("--num_aug", required=False, type=int, help="number of augmented sentences per original sentence")
 ap.add_argument("--alpha", required=False, type=float, help="percent of words in each sentence to be changed")
 args = ap.parse_args()
-
+from config import Config
+config = Config()
+apikey=config.apikey
 #the output file
 output = None
 if args.output:
@@ -43,7 +45,7 @@ def gen_eda(train_orig, output_file, alpha, num_aug=9):
         parts = line.rstrip().split('|')
         label = parts[1]
         sentence = parts[2]
-        aug_sentences = eda(sentence, alpha_sr=alpha, alpha_ri=alpha, alpha_rs=alpha, p_rd=alpha,alpha_umls=alpha, num_aug=num_aug)
+        aug_sentences = eda(sentence, apikey=apikey, alpha_sr=alpha, alpha_ri=alpha, alpha_rs=alpha, p_rd=alpha,alpha_umls=alpha, num_aug=num_aug)
         for aug_sentence in aug_sentences:
             writer.write(parts[0]+"|"+label + "|" + aug_sentence + '\n')
         if i%10 ==0:

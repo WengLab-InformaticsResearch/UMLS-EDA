@@ -4,9 +4,6 @@
 import random
 from random import shuffle
 random.seed(1)
-from config import Config
-config = Config()
-
 
 #stop words list
 stop_words = ['i', 'me', 'my', 'myself', 'we', 'our', 
@@ -31,7 +28,6 @@ stop_words = ['i', 'me', 'my', 'myself', 'we', 'our',
             'very', 's', 't', 'can', 'will', 'just', 'don', 
             'should', 'now', '']
 
-re_stop_words = []
 #cleaning up text
 import re
 def get_only_chars(line):
@@ -52,12 +48,9 @@ def get_only_chars(line):
             clean_line += ' '
 
     clean_line = re.sub(' +',' ',clean_line) #delete extra spaces
-    if clean_line == "":
-        return ""
     if clean_line[0] == ' ':
         clean_line = clean_line[1:]
     return clean_line
-
 
 #*****************************
 # UMLS Synonyms replacement  #
@@ -65,7 +58,29 @@ def get_only_chars(line):
 
 
 #from QuickUMLS.quickumls import QuickUMLS
-matcher = None#QuickUMLS(config.QuickUMLS_dir, threshold=config.threshold, similarity_name ='cosine')#,overlapping_criteria='length')
+import nltk
+matcher = None#QuickUMLS("/home/tk2624/tools/QuickUMLS",threshold=0.8,similarity_name ='cosine',overlapping_criteria='length')
+
+def ngram_index(words, ngram):
+    return list(nltk.ngrams(words, len(ngram))).index(tuple(ngram))
+
+def isSubstring(s1, s2): 
+    M = len(s1) 
+    N = len(s2) 
+  
+    # A loop to slide pat[] one by one  
+    for i in range(N - M + 1): 
+  
+        # For current index i, 
+        # check for pattern match  
+        for j in range(M): 
+            if (s2[i + j] != s1[j]): 
+                break
+              
+        if j + 1 == M : 
+            return i 
+  
+    return False
 
 def get_umls_tagging(text,matcher):
     info = matcher.match(text, best_match=True, ignore_syntax=False)
@@ -100,8 +115,9 @@ def get_atoms(apikey,cui):
     return atoms
 #get_atoms(apikey,'C0006142')
 
-def umls_replacement(words,n,apikey,task = "sent"):
+def umls_replacement(words,labels,n, apikey):
     sent = " ".join(words)
+    #new_labels = labels.copy()
     
     augumented_sents = []
     taggings = get_umls_tagging(sent, matcher)
@@ -120,27 +136,94 @@ def umls_replacement(words,n,apikey,task = "sent"):
             atoms_raw = get_atoms(apikey,cui)
         except:
             continue
+
         #remove synnonyms with only case differences
         atoms = [a for a in atoms_raw if not a.lower() == i['term'].lower() and not a.lower()+"s" ==i['term'].lower() and not a.lower() == i['term'].lower()+"s" ]
         if i['term'] in atoms:
             atoms.remove(i['term'])
         
+        #print(len(atoms),i['term'],"-------- atoms:",atoms,"\n")
         if len(atoms)>0:
             atoms_set.append({i['term']:atoms})
             total_num=total_num*len(atoms)
+
     max_num = min(n, total_num)
+    
     for _ in range(max_num):
         new_sent = sent
+        new_label = labels.copy()
+
         for i in range(len(atoms_set)):
+            
             atom = atoms_set[i]
             term = list(atom.keys())[0]
-            atoms = atom[term]
+            atoms = atom[term]        
             synonym = random.choice(atoms)
-            new_sent = re.sub("[ |^]"+term+"[ |$]"," "+synonym+" ",new_sent)
-            #atoms.remove(synonym)
-            #atoms_set[i] = {term:atoms}
-        augumented_sents.append(new_sent)
-    return list(set(augumented_sents))
+            
+            try:
+                a = re.search(synonym.lower(),term.lower())
+                b = re.search(term.lower(),synonym.lower())
+            except:
+                a = True
+                b = True
+            if re.search("[\^\[\]\(\)\{\}]",synonym) or set(synonym.lower().split(" ")) == set(term.lower().split(" ")) or a == True or b == True or set(synonym.lower().split(" ")).issubset(set(term.lower().split(" "))) or set(term.lower().split(" ")).issubset(set(synonym.lower().split(" "))):
+                continue
+            #print (":",term)
+            try:
+                term_index = ngram_index(new_sent.split(" "),term.split(" ") )
+            except:
+                continue
+            
+            before_index = term_index
+            after_index = term_index+len(term.split(" "))
+            syn_label = new_label[before_index:after_index]
+            '''
+            print (len(new_label),len(new_sent.split(" ")))
+            print (new_label)
+            print (new_sent)
+            print (term,"==",synonym,"===",len(new_sent.split(" ")),term_index,syn_label)
+            '''
+            if before_index == 0:
+                before=["TEMP"]
+            else:
+                before = new_label[:before_index].copy()
+            #print(term,synonym,syn_label)
+            if re.search("O\s+.*\-"," ".join(syn_label)) or re.search("\-.*\s+O"," ".join(syn_label)):
+                continue # syn span over both O and entities, skip
+            elif re.search("^O+$","".join(syn_label)): # non entity span
+                before.extend(["O"]*len(synonym.split(" ")))
+                before.extend(new_label[after_index:])
+            elif len(set(syn_label)) == 1 and re.search("^I\-",syn_label[0]):
+                before.extend([syn_label[0]]*len(synonym.split(" ")))
+                before.extend(new_label[after_index:])
+            else: # both B- and I- or only B-
+                if len(syn_label)>1:
+                    before.extend([syn_label[0]])
+                    before.extend([syn_label[1]]*(len(synonym.split(" "))-1))
+                    before.extend(new_label[after_index:])
+
+                else:
+                    #print (new_sent)
+                    #print (before)
+                    #print(syn_label[0])
+                    before.extend([syn_label[0]])
+                    before.extend([re.sub("^B","I",syn_label[0])]*(len(synonym.split(" "))-1))
+                    before.extend(new_label[after_index:])
+            if before_index == 0:
+                del before[0]
+            words= new_sent.split(" ")                 
+            new_label = before.copy()
+            if before_index >0:
+                new_sent = " ".join(words[:before_index])+" "+synonym+" " + " ".join(words[after_index:])
+            else:
+                new_sent = synonym+" " + " ".join(words[after_index:])
+        augumented_sents.append([(new_sent).split(" "),new_label])
+    return augumented_sents
+
+     
+##########################################################################
+
+
 
 ########################################################################
 # Synonym replacement
@@ -152,29 +235,36 @@ def umls_replacement(words,n,apikey,task = "sent"):
 #nltk.download('wordnet')
 from nltk.corpus import wordnet 
 
-def synonym_replacement(words, n,task = "sentence"):
+def synonym_replacement(words,labels,n):
     new_words = words.copy()
+    new_labels = labels.copy()
     random_word_list = list(set([word for word in words if word not in stop_words]))
-    
-    if task  == "re":
-        random_word_list = list(set([word for word in words if not re.search("^@\w+\$$",word)]))
-        
+    #print (random_word_list,"***")
     random.shuffle(random_word_list)
     num_replaced = 0
+    
     for random_word in random_word_list:
         synonyms = get_synonyms(random_word)
+        #print (synonyms,"~~~~~~")
         if len(synonyms) >= 1:
             synonym = random.choice(list(synonyms))
-            new_words = [synonym if word == random_word else word for word in new_words]
+            if len(synonym.split(" "))>1 or  re.search(synonym,random_word) or re.search(random_word,synonym):
+                continue
+            new_words = [synonym if word.lower() == random_word.lower() else word for word in new_words]
+            #print("replaced", "==="+random_word+"===", "with", "==="+synonym+"===")
             num_replaced += 1
         if num_replaced >= n: #only replace up to n words
             break
 
     #this is stupid but we need it, trust me
-    sentence = ' '.join(new_words)
-    new_words = sentence.split(' ')
+    if new_words == words:
+        return None,None
 
-    return new_words
+    sentence = ' '.join(new_words)
+    #sentence = "1---"+sentence
+    new_words =( sentence).split(' ')
+    
+    return new_words,new_labels
 
 def get_synonyms(word):
     synonyms = set()
@@ -185,66 +275,70 @@ def get_synonyms(word):
             synonyms.add(synonym) 
     if word in synonyms:
         synonyms.remove(word)
+    #print("\n==",word,"===", synonyms) 
+
     return list(synonyms)
+
 
 ########################################################################
 # Random deletion
 # Randomly delete words from the sentence with probability p
 ########################################################################
 
-def random_deletion(words, p,task = "sentence"):
+def random_deletion(words,labels, p):
+
     #obviously, if there's only one word, don't delete it
     if len(words) == 1:
-        return words
+        return words,labels
 
     #randomly delete words with probability p
     new_words = []
-    for word in words:
-        if task == "re" and re.search("^@\w+\$$",word):
-            new_words.append(word)
-            continue
-            
+    new_labels=[]
+    # dont delete the words which is the begining of an entity(B-tag)
+    for i, word in enumerate(words):
         r = random.uniform(0, 1)
-        if r > p:
+        if re.search("^B-",labels[i]):
             new_words.append(word)
-
+            new_labels.append(labels[i])
+            continue
+        if r > p :
+            new_words.append(word)
+            new_labels.append(labels[i])
     #if you end up deleting all words, just return a random word
     if len(new_words) == 0:
-        if len(words)-1<0:
-            return 
         rand_int = random.randint(0, len(words)-1)
-        return [words[rand_int]]
-
-    return new_words
+        return words[rand_int],labels[rand_int]
+    sentence = ' '.join(new_words)
+    #sentence = "2---"+sentence
+    new_words =( sentence).split(' ')
+    return new_words,new_labels
 
 ########################################################################
 # Random swap
 # Randomly swap two words in the sentence n times
 ########################################################################
 
-def random_swap(words, n,task = "sent"):
+def random_swap(words,labels, n):
     new_words = words.copy()
+    new_labels = labels.copy()
     for _ in range(n):
         new_words = swap_word(new_words)
-    return new_words
+    sentence = ' '.join(new_words)
+    #sentence = "3---"+sentence
+    new_words = (sentence).split(' ')
+    return new_words,new_labels
 
-def swap_word(new_words, task = "sent"):
-    if len(new_words)-1<0:
-        return
+def swap_word(new_words):
     random_idx_1 = random.randint(0, len(new_words)-1)
-    
-    if task == "re":
-        while re.search("^@\w+\$$",new_words[random_idx_1]):
-            random_idx_1 = random.randint(0, len(new_words)-1)
-    
     random_idx_2 = random_idx_1
     counter = 0
-    while random_idx_2 == random_idx_1 or re.search("^@\w+\$$",new_words[random_idx_2]):
+    while random_idx_2 == random_idx_1:
         random_idx_2 = random.randint(0, len(new_words)-1)
         counter += 1
         if counter > 3:
             return new_words
     new_words[random_idx_1], new_words[random_idx_2] = new_words[random_idx_2], new_words[random_idx_1] 
+    
     return new_words
 
 ########################################################################
@@ -252,95 +346,122 @@ def swap_word(new_words, task = "sent"):
 # Randomly insert n words into the sentence
 ########################################################################
 
-def random_insertion(words, n,task = "sent"):
+def random_insertion(words,labels, n):
     new_words = words.copy()
+    new_labels = labels.copy()
     for _ in range(n):
-        add_word(new_words)
-    return new_words
+        add_word(new_words,new_labels)
+    sentence = ' '.join(new_words)
+    #sentence = "4---"+sentence
+    new_words = (sentence).split(' ')
+    return new_words, new_labels
 
-def add_word(new_words):
+def add_word(new_words,new_labels):
     synonyms = []
     counter = 0
     while len(synonyms) < 1:
-        if len(new_words)-1<0:
-            return
-        random_word = new_words[random.randint(0, len(new_words)-1)]
-
+        #generate a random index thats not in the beginning in entities
+          
+        random_word = new_words[random.randint(0, len(new_words)-1) ]
         synonyms = get_synonyms(random_word)
         counter += 1
         if counter >= 10:
             return
     random_synonym = synonyms[0]
+    seed = 1
+    random.seed(seed)
+    while re.search("B\-",new_labels[random.randint(0, len(new_words)-1)]) :
+        seed += 1
+        random.seed(seed) 
+        if seed > len(new_words):
+            break
     random_idx = random.randint(0, len(new_words)-1)
     new_words.insert(random_idx, random_synonym)
+    if random_idx==len(new_labels)-1: # insert in the end
+        new_labels.insert(random_idx, "O")
+    elif new_labels[random_idx+1] == "O":
+        new_labels.insert(random_idx, "O")
+    else:
+        new_labels.insert(random_idx,new_labels[random_idx-1])
+    
 
 ########################################################################
 # main data augmentation function
 ########################################################################
 
-def eda(sentence, apikey, alpha_sr=0.2, alpha_ri=0.2, alpha_rs=0.2, p_rd=0.2,alpha_umls=0.5,num_aug=9,task = "sent"):
-    #task = "sent" sentence classification
-    #task= "re" relation extraction "index sentence label"
+#0:ori
+#1:sr-wordnet
+#2:rd
+#3:rw
+#4:ri
+#5:sr-umls
+
+def eda(sentence, label, apikey, alpha_umls = 0.5, alpha_sr=0.5, alpha_ri=0.5, alpha_rs=0.5, p_rd=0.5, num_aug=10):
     
     #sentence = get_only_chars(sentence)
     words = sentence.split(' ')
+    
     words = [word for word in words if word != '']
     num_words = len(words)
     
     augmented_sentences = []
     num_new_per_technique = int(num_aug/4)+1
+    n_umls = max(1, int(alpha_umls*num_words))
     n_sr = max(1, int(alpha_sr*num_words))
     n_ri = max(1, int(alpha_ri*num_words))
     n_rs = max(1, int(alpha_rs*num_words))
-    n_umls = max(1,int(alpha_umls*num_words))
-
     
     #umls
-    if True:
-        sentences = umls_replacement(words,n_umls,apikey,task)
-        if len(sentences) > 0:
-            augmented_sentences.extend(sentences)
-    #except:
-    #    augmented_sentences=[]
-  
+    new_sents = umls_replacement(words,label,4,apikey)
+    if len(new_sents) >0:
+        augmented_sentences.extend(new_sents)
+    
     #sr
     for _ in range(num_new_per_technique):
-        a_words = synonym_replacement(words, n_sr,task)
-        if  a_words is None or len(a_words)<1:
+        
+        a_words,new_label = synonym_replacement(words,label, n_sr)
+
+        if a_words is None:
             continue
-        augmented_sentences.append(' '.join(a_words))
+        augmented_sentences.append([a_words,new_label])
+
     #ri
     for _ in range(num_new_per_technique):
-        a_words = random_insertion(words, n_ri,task)
-        if  a_words is None or len(a_words)<1:
+        a_words,new_label = random_insertion(words,label, n_ri)
+        
+        if a_words == words:
             continue
-        augmented_sentences.append(' '.join(a_words))
+        #print(" ".join(a_words))
+        #print(" ".join(new_label))
+        augmented_sentences.append([a_words,new_label])
+        #augmented_sentences.append(' '.join(a_words))
+    
     #rs
     for _ in range(num_new_per_technique):
-        a_words = random_swap(words, n_rs,task)
-        if  a_words is None or len(a_words)<1:
+        a_words,new_label = random_swap(words,label, n_rs)
+        if a_words == words:
             continue
-        augmented_sentences.append(' '.join(a_words))
+        augmented_sentences.append([a_words,new_label])
+
+
     #rd
     for _ in range(num_new_per_technique):
-        a_words = random_deletion(words, p_rd,task)
-        if  a_words is None or len(a_words)<1:
+        a_words,new_label = random_deletion(words,label, p_rd)
+        if a_words == words:
             continue
-        augmented_sentences.append(' '.join(a_words))
-
-    
-    #augmented_sentences = list(set([get_only_chars(sentence) for sentence in augmented_sentences]))
+        augmented_sentences.append([a_words,new_label])
+       
     shuffle(augmented_sentences)
-
+    
     #trim so that we have the desired number of augmented sentences
-    if num_aug >= 1:
+    if num_aug >= 1 :#and len(augmented_sentences)>num_aug:
         augmented_sentences = augmented_sentences[:num_aug]
     else:
         keep_prob = num_aug / len(augmented_sentences)
         augmented_sentences = [s for s in augmented_sentences if random.uniform(0, 1) < keep_prob]
-
+    
     #append the original sentence
-    augmented_sentences.append(sentence)
+    augmented_sentences.append([words,label])#"0---"+sentence)
 
     return augmented_sentences
 
